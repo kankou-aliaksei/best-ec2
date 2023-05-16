@@ -1,0 +1,23 @@
+version: '3'
+services:
+  api:
+    build:
+      context: ./api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./api_data:/api_data
+    environment:
+      - PORT=8000
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - ALLOWED_CORS_ORIGIN=$ALLOWED_CORS_ORIGIN
+      - ALLOWED_HOST=$ALLOWED_HOST
+      - SECRET_KEY=$SECRET_KEY
+  web:
+    build:
+      context: ./web
+      args:
+        API_URL: $API_URL
+    ports:
+      - "80:80"

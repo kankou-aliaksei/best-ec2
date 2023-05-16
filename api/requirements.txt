@@ -1,0 +1,7 @@
+Django
+django-cors-headers
+gunicorn
+amazon-ec2-best-instance==2.5.0
+requests
+djangorestframework
+boto3

@@ -1,0 +1,3 @@
+.env*
+api_data
+archive_and_upload.sh
