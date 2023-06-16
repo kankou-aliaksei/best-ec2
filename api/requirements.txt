@@ -1,7 +1,7 @@
 Django
 django-cors-headers
 gunicorn
-amazon-ec2-best-instance==2.5.0
+amazon-ec2-best-instance==3.0.1
 requests
 djangorestframework
 boto3

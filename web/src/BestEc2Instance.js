@@ -89,10 +89,12 @@ function BestEc2Instance() {
     const [vcpu, setVcpu] = useState('1');
     const [memoryGb, setMemoryGb] = useState('2');
     const [usageClass, setUsageClass] = useState('on-demand');
+    const [hasGpu, setHasGpu] = useState('all');
+    const [gpuMemory, setGpuMemory] = useState('4');
     const [burstable, setBurstable] = useState('all');
     const [architecture, setArchitecture] = useState('x86_64');
     const [productDescription, setProductDescription] = useState(productDescriptionsOptions[0]);
-    const [currentGeneration, setCurrentGeneration] = useState('all');
+    const [currentGeneration, setCurrentGeneration] = useState('true');
     const [instanceStorageSupported, setInstanceStorageSupported] = useState(
         'all'
     );
@@ -148,6 +150,8 @@ function BestEc2Instance() {
             vcpu: parseInt(vcpu),
             memoryGb: parseInt(memoryGb),
             usageClass,
+            hasGpu,
+            gpuMemory,
             burstable,
             architecture,
             productDescription,
@@ -282,6 +286,46 @@ function BestEc2Instance() {
                                 <MenuItem value="spot">Spot</MenuItem>
                             </SelectMaterial>
                         </FormControl>
+                    </div>
+
+                    <div>
+                        <FormControl className={classes.formControl}
+                                     title="Indicating whether the instance is equipped with a GPU">
+
+                            <Typography className={classes.typography} id="current-generation-label" gutterBottom>
+                                Has GPU
+                            </Typography>
+                            <SelectMaterial
+                                labelId="burstable-label"
+                                id="burstable-select"
+                                value={hasGpu}
+                                onChange={(e) => setHasGpu(e.target.value)}
+                            >
+                                <MenuItem value="all">All</MenuItem>
+                                <MenuItem value="true">True</MenuItem>
+                                <MenuItem value="false">False</MenuItem>
+                            </SelectMaterial>
+                        </FormControl>
+                    </div>
+
+                    <div>
+                        {hasGpu === 'true' && (<FormControl className={classes.formControl}
+                                                            title="Amount of GPU Memory in Gigabytes (GiB)">
+                            <Typography className={classes.typography} variant="body1" gutterBottom>
+                                GPU memory (GiB)
+                            </Typography>
+                            <TextField
+                                type="number"
+                                value={gpuMemory}
+                                onChange={(e) => setGpuMemory(e.target.value)}
+                                inputProps={{
+                                    style: {textAlign: 'center'},
+                                    min: 1,
+                                }}
+                                required
+                            />
+                        </FormControl>)}
+
                     </div>
 
                     <div>
@@ -496,7 +540,7 @@ function BestEc2Instance() {
                                 <>
                                     <TableHead>
                                         <TableRow>
-                                            {Object.keys(instances[0]).map((key) => (
+                                            {Object.keys(instances.reduce((a, b) => (Object.keys(a).length > Object.keys(b).length ? a : b), {})).map((key) => (
                                                 <TableCell
                                                     key={key}
                                                     style={{
@@ -510,15 +554,19 @@ function BestEc2Instance() {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {instances.map((instance, index) => (
-                                            <TableRow key={index}>
-                                                {Object.values(instance).map((value, i) => (
-                                                    <TableCell key={i}>
-                                                        {typeof value === 'object' ? JSON.stringify(value) : value}
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                        ))}
+                                        {instances.map((instance, index) => {
+                                            // Get the keys from the object with the most properties
+                                            const allKeys = Object.keys(instances.reduce((a, b) => (Object.keys(a).length > Object.keys(b).length ? a : b), {}));
+                                            return (
+                                                <TableRow key={index}>
+                                                    {allKeys.map((key, i) => (
+                                                        <TableCell key={i}>
+                                                            {instance.hasOwnProperty(key) ? (typeof instance[key] === 'object' ? JSON.stringify(instance[key]) : instance[key]) : ''}
+                                                        </TableCell>
+                                                    ))}
+                                                </TableRow>
+                                            )
+                                        })}
                                     </TableBody>
                                 </>
                             ) : (
@@ -531,6 +579,7 @@ function BestEc2Instance() {
                         </Table>
                     </TableContainer>
                 </div>
+
             )}
         </>
     );
