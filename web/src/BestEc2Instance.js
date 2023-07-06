@@ -15,6 +15,8 @@ import TableContainer from '@material-ui/core/TableContainer';
 import TableHead from '@material-ui/core/TableHead';
 import TableRow from '@material-ui/core/TableRow';
 import Typography from '@material-ui/core/Typography';
+import TableSortLabel from '@material-ui/core/TableSortLabel';
+import KeyboardArrowUpIcon from '@material-ui/icons/KeyboardArrowUp';
 
 import {BASE_URL} from './constant';
 
@@ -68,6 +70,9 @@ const useStyles = makeStyles((theme) => ({
         fontSize: '1.5rem',
         marginLeft: '1rem',
     },
+    exportButton: {
+        margin: theme.spacing(1),
+    },
 }));
 
 
@@ -112,6 +117,8 @@ function BestEc2Instance() {
     const [isLoading, setIsLoading] = useState(false); // Loading state
     const [showAvailabilityZones, setShowAvailabilityZones] = useState(false);
     const [showMaxInterruptionFrequency, setShowMaxInterruptionFrequency] = useState(false);
+    const [sortBy, setSortBy] = useState(null);
+    const [sortOrder, setSortOrder] = useState('asc');
 
     useEffect(() => {
         fetch(`${BASE_URL}/regions`)
@@ -140,6 +147,42 @@ function BestEc2Instance() {
 
     const handleZoneChange = (selectedOptions) => {
         setSelectedZones(selectedOptions || []);
+    };
+
+    const handleSort = (columnId) => {
+        if (sortBy === columnId) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(columnId);
+            setSortOrder('asc');
+        }
+    };
+
+    const handleExportCSV = () => {
+        if (!instances) return;
+
+        const expandedRow = instances.reduce((acc, curr) => {
+            return Object.keys(curr).length > Object.keys(acc).length ? curr : acc;
+        }, {});
+
+        const csvHeaders = Object.keys(expandedRow).join(',');
+        const csvRows = instances.map((instance) =>
+            Object.values(instance).map((value) =>
+                typeof value === 'object' && value !== null
+                    ? `"${JSON.stringify(value).replace(/"/g, "'")}"`
+                    : value
+            ).join(',')
+        );
+
+        const csvContent = `data:text/csv;charset=utf-8,${csvHeaders}\n${csvRows.join('\n')}`;
+
+        const encodedURI = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.href = encodedURI;
+        link.download = 'instance_types.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleSubmit = async (event) => {
@@ -205,7 +248,7 @@ function BestEc2Instance() {
             <div>
                 <h2>Best EC2</h2>
                 <p>Application (based on pypi <a
-                    href="https://github.com/kankou-aliaksei/amazon-ec2-best-instance">amazon-ec2-best-instance</a>)
+                    href="https://pypi.org/project/amazon-ec2-best-instance">amazon-ec2-best-instance</a>)
                     provides you with the capability to select the
                     most efficient and cost-effective EC2 instance type for both on-demand and spot usage. It also
                     offers a reduced rate of instance reclamation for spot instances.</p>
@@ -534,6 +577,16 @@ function BestEc2Instance() {
             {instances && (
                 <div>
                     <h2>Instance Data:</h2>
+                    {!formVisible && instances && instances.length > 0 && (
+                        <Button
+                            className={classes.exportButton}
+                            variant="outlined"
+                            color="primary"
+                            onClick={handleExportCSV}
+                        >
+                            Export to CSV
+                        </Button>
+                    )}
                     <TableContainer className={classes.table}>
                         <Table>
                             {instances.length > 0 ? (
@@ -545,29 +598,63 @@ function BestEc2Instance() {
                                                     key={key}
                                                     style={{
                                                         backgroundColor: '#f2f2f2',
-                                                        fontWeight: 'bold'
-                                                    }} // Added style for highlighting
+                                                        fontWeight: 'bold',
+                                                        cursor: 'pointer',
+                                                    }}
                                                 >
-                                                    {key === "price" ? "price per hour ($)" : key}
+                                                    <TableSortLabel
+                                                        active={sortBy === key}
+                                                        direction={sortOrder}
+                                                        onClick={() => handleSort(key)}
+                                                        IconComponent={KeyboardArrowUpIcon}
+                                                    >
+                                                        {key === 'price' ? 'Price per hour ($)' : key}
+                                                    </TableSortLabel>
                                                 </TableCell>
                                             ))}
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {instances.map((instance, index) => {
-                                            // Get the keys from the object with the most properties
-                                            const allKeys = Object.keys(instances.reduce((a, b) => (Object.keys(a).length > Object.keys(b).length ? a : b), {}));
-                                            return (
-                                                <TableRow key={index}>
-                                                    {allKeys.map((key, i) => (
-                                                        <TableCell key={i}>
-                                                            {instance.hasOwnProperty(key) ? (typeof instance[key] === 'object' ? JSON.stringify(instance[key]) : instance[key]) : ''}
-                                                        </TableCell>
-                                                    ))}
-                                                </TableRow>
-                                            )
-                                        })}
+                                        {instances.length > 0 ? (
+                                            instances
+                                                .sort((a, b) => {
+                                                    if (sortBy) {
+                                                        const valueA = a[sortBy];
+                                                        const valueB = b[sortBy];
+
+                                                        if (typeof valueA === 'undefined' && typeof valueB === 'undefined') {
+                                                            return 0; // Both values are undefined, consider them equal
+                                                        } else if (typeof valueA === 'undefined') {
+                                                            return sortOrder === 'asc' ? 1 : -1; // A is undefined, push it to the end
+                                                        } else if (typeof valueB === 'undefined') {
+                                                            return sortOrder === 'asc' ? -1 : 1; // B is undefined, push it to the end
+                                                        }
+
+                                                        if (valueA < valueB) return sortOrder === 'asc' ? -1 : 1;
+                                                        if (valueA > valueB) return sortOrder === 'asc' ? 1 : -1;
+                                                        return 0;
+                                                    }
+
+                                                    return 0;
+                                                })
+                                                .map((instance, index) => (
+                                                    <TableRow key={index}>
+                                                        {Object.keys(instance).map((key, i) => (
+                                                            <TableCell key={i}>
+                                                                {typeof instance[key] === 'object'
+                                                                    ? JSON.stringify(instance[key])
+                                                                    : instance[key]}
+                                                            </TableCell>
+                                                        ))}
+                                                    </TableRow>
+                                                ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell>Data not found</TableCell>
+                                            </TableRow>
+                                        )}
                                     </TableBody>
+
                                 </>
                             ) : (
                                 <TableBody>
@@ -579,7 +666,6 @@ function BestEc2Instance() {
                         </Table>
                     </TableContainer>
                 </div>
-
             )}
         </>
     );

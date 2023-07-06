@@ -8,7 +8,7 @@ COPY . /app
 
 RUN npm install
 
-RUN perl -pi -e 's#http://127.0.0.1:8001#'"$API_URL"'#g' src/constant.js
+RUN perl -pi -e 's#http://localhost:8001#'"$API_URL"'#g' src/constant.js
 
 RUN npm run build
 

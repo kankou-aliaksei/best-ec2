@@ -1,3 +1,4 @@
 .env*
 api_data
 archive_and_upload.sh
+redeploy_prod_app.sh
